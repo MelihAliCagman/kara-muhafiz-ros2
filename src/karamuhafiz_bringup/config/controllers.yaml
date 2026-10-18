@@ -1,0 +1,42 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    # Gün 3: Ackermann surus - arka iki teker tahrik (velocity), on iki teker
+    # direksiyon (position). ros2_controllers paketinin hazir
+    # ackermann_steering_controller'i kullaniyoruz (steering_controllers_library
+    # tabanli). Komut: /ackermann_steering_controller/reference topic'i
+    # (AckermannDrive benzeri) veya /cmd_vel uzerinden (bkz. asagidaki not).
+    ackermann_steering_controller:
+      type: ackermann_steering_controller/AckermannSteeringController
+
+# ackermann_steering_controller parametreleri - xacro'daki gercek olculerle
+# birebir eslesmeli (wheelbase=1.10m, track=0.91m, teker r=0.2575m - Gun 2'de
+# dogrulandi).
+ackermann_steering_controller:
+  ros__parameters:
+    reference_timeout: 0.5
+    front_steering: true
+    open_loop: false
+    velocity_rolling_window_size: 10
+    position_feedback: true
+
+    # Tahrik (arka) tekerler - command_interface: velocity
+    rear_wheels_names: ["rear_l_joint", "rear_r_joint"]
+    # Direksiyon (on) mafsallari - command_interface: position
+    front_wheels_names: ["front_l_steer_joint", "front_r_steer_joint"]
+
+    wheelbase: 1.10
+    front_wheel_track: 0.91
+    rear_wheel_track: 0.91
+    front_wheels_radius: 0.2575
+    rear_wheels_radius: 0.2575
+
+    base_frame_id: base_footprint
+    odom_frame_id: odom
+    enable_odom_tf: true
+
+    publish_rate: 50.0

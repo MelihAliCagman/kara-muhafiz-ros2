@@ -1,0 +1,15 @@
+# colcon build ciktilari - kaynaktan yeniden uretilir, repoya gerek yok
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+
+# rosbag kayitlari - buyuk binary dosyalar, repoya gerek yok
+rosbags/*/
+!rosbags/.gitkeep
+
+# IDE
+.vscode/

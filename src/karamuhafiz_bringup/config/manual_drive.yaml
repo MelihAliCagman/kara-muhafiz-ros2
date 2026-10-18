@@ -1,0 +1,19 @@
+manual_drive_node:
+  ros__parameters:
+    cmd_vel_topic: "/cmd_vel"
+    output_topic: "/ackermann_steering_controller/reference_unstamped"
+    # DENEME (Gun 4-5): arac spawn yonu duzeltildi (sim_bringup.launch.py'de
+    # spawn_yaw=180 derece) - hipotez: dunku "ters isaret" aslinda controller
+    # degil, aracin parkura ters dogmasi sorunuydu. Simdi false ile test
+    # ediliyor; dogru calismazsa true'ya geri donulecek.
+    invert_linear: false
+
+    # Guvenli hiz limitleri (gorev sartnamesi: arac sinirlarini asmamali).
+    # Teker-zemin surtunmesi dik egim (%45) testleri icin mu=3.0'a
+    # kalibre edilmisti (bkz. urdf yorumlari); manuel suruste konservatif
+    # kalip otonomi asamasinda ayri ayarlanacak.
+    max_linear_speed: 1.0    # m/s
+    max_angular_speed: 0.4   # rad/s
+
+    command_timeout: 0.3     # s - /cmd_vel sessiz kalirsa arac durur
+    publish_rate: 20.0       # Hz

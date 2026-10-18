@@ -1,0 +1,765 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="karamuhafiz" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- gazebo_ros2_control'a verilecek controller yaml yolu (launch'tan gecilir) -->
+  <xacro:arg name="controllers_yaml" default=""/>
+  <!-- Simülasyon için ölçüm doğrulanana kadar muhafazakâr süspansiyon modeli.
+       Gerçek stroke/yay/amortisör değerleri mekanik ölçümle değiştirilmelidir. -->
+  <xacro:property name="suspension_stroke" value="0.08"/>
+  <xacro:property name="suspension_spring" value="12000.0"/>
+  <xacro:property name="suspension_damping" value="600.0"/>
+
+  <!-- ================================================================== -->
+  <!--  MALZEME TANIMLARI                                                 -->
+  <!-- ================================================================== -->
+  <material name="blue"><color rgba="0.1 0.1 0.8 1" /></material>
+  <material name="black"><color rgba="0 0 0 1"/></material>
+  <material name="grey"><color rgba="0.5 0.5 0.5 1"/></material>
+  <material name="red"><color rgba="1 0 0 0.8"/></material>
+  <material name="dark_grey"><color rgba="0.3 0.3 0.3 1"/></material>
+  <material name="green"><color rgba="0.2 0.8 0.2 1"/></material>
+  <material name="military_green"><color rgba="0.12 0.18 0.08 1.0"/></material>
+
+  <!-- ================================================================== -->
+  <!--  KM2 FİZİKSEL PARAMETRELERİ                                        -->
+  <!-- ================================================================== -->
+  <!--  DÜZELTME (KTR uyum): Önceki SolidWorks export'u FİZİKSEL DEĞİLDİ  -->
+  <!--  (gövde 476 kg, teker 18.76 kg → toplam ~573 kg). Muhtemelen CAD   -->
+  <!--  malzeme yoğunlukları hatalıydı. KTR §3.1.4 nihai kütle 120 kg.    -->
+  <!--  Kütle/atalet ~×0.20 ölçeklenip toplam ~120 kg'a çekildi (I∝m,     -->
+  <!--  geometri sabit). CoG yüksekliği KTR h=0.45 m'ye ayarlandı.        -->
+  <!--  ⚠️ Bu bir TAHMİN; mekanik ekip doğru yoğunluklarla sw2urdf ile    -->
+  <!--     yeniden export edince gerçek değerlerle değiştirin.            -->
+  <!-- Gövde kütlesi: ~95 kg  (eski 476.48)                              -->
+  <!-- Tekerlek kütlesi (ön): 4.0 kg  (arka): 4.2 kg  (eski 18.76/19.515)-->
+  <!-- Tekerlek yarıçapı: 0.2575 m (KTR §3.1.5; tork hesaplarında bilinçli -->
+  <!--   kullanılmış). Eski export 0.35 m FİZİKSEL DEĞİLDİ (0.70 m çap ~   -->
+  <!--   araç boyu; aynı hatalı export 476 kg veriyordu). Genişlik: 0.143 m-->
+  <!--   ⚠️ En iyi tahmin; mekanik ekip GERÇEK aracı ölçüp teyit edecek.   -->
+  <!-- İz (track): 0.91 m   Dingil (wheelbase): 1.10 m                     -->
+  <!-- Sürtünme μ: 1.0 (gerçekçi lastik-kuru zemin; eski 2.0 hack'ti)      -->
+
+  <!-- ================================================================== -->
+  <!--  BASE_FOOTPRINT (Zemin Referans Noktası)                           -->
+  <!-- ================================================================== -->
+  <link name="base_footprint"/>
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/><child link="base_link"/>
+    <!-- base_link = tekerlek ekseni + 3cm yer boslugu -->
+    <!-- Teker r=0.2575 -> merkez abs=0.2875, alt=0.2875-0.2575=0.03 (zemin ustu) -->
+    <origin xyz="0 0 0.2875" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================== -->
+  <!--  BASE_LINK - Ana Gövde (KM2 SolidWorks Verileri)                   -->
+  <!-- ================================================================== -->
+  <link name="base_link">
+    <inertial>
+      <!-- CoM: KTR CoG yüksekliği 0.45 m (zeminden). base_link z=0.2875 → origin z=+0.1625.
+           Kütle 476.48→95 (×0.1994); atalet aynı oranla ölçeklendi (I∝m, geometri sabit). -->
+      <origin xyz="0 0 0.1625" rpy="0 0 0"/>
+      <mass value="95.0"/>
+      <inertia ixx="16.33" ixy="0.0" ixz="0.0"
+               iyy="21.37" iyz="0.187"
+               izz="7.50"/>
+    </inertial>
+    <visual>
+      <!-- SW mesh: -90 Z rot, mesh burun Y=0 tarafı -> ROS +X (ileri) -->
+      <!-- offset: x=+0.75(merkez), z=+0.1(bottom=0) -->
+      <origin xyz="0.75 0 0.1" rpy="0 0 -1.5708"/>
+      <geometry><mesh filename="package://karamuhafiz_base/meshes/base_link.STL"/></geometry>
+      <material name="military_green"/>
+    </visual>
+    <collision>
+      <!-- Collision = mesh ortasinda, tekerleklerin USTUNDE ve Y'de tekerlekleri degmeyecek sekilde dar (0.60m) -->
+      <origin xyz="0 0 0.27" rpy="0 0 0"/>
+      <geometry><box size="1.4 0.60 0.10"/></geometry>
+    </collision>
+  </link>
+
+  <!-- Gazebo govde rengi: Askeri yesil tonu (Olive Drab) -->
+  <gazebo reference="base_link">
+    <visual>
+      <material>
+        <ambient>0.12 0.18 0.08 1.0</ambient>
+        <diffuse>0.12 0.18 0.08 1.0</diffuse>
+        <specular>0.05 0.05 0.05 1.0</specular>
+        <emissive>0.0 0.0 0.0 1.0</emissive>
+      </material>
+    </visual>
+  </gazebo>
+
+  <!-- ================================================================== -->
+  <!--  TEKERLEK MAKROSU (KM2 Ölçüleri)                                   -->
+  <!--  Ön tekerlekler: R=0.2575m, W=0.143m, m=4.0kg  (eski 0.35m/18.76kg fiziksel değildi) -->
+  <!--  Arka tekerlekler: R=0.2575m, W=0.143m, m=4.2kg (eski 0.35m/19.515kg) -->
+  <!--  iyy(front)=0.133 ixx=izz=0.073 | iyy(rear)=0.139 ixx=izz=0.077     -->
+  <!--  Atalet silindir formülüyle (spin ekseni Y → iyy en büyük):        -->
+  <!--   iyy=0.5·m·r² , ixx=izz=(1/12)·m·(3r²+h²)                          -->
+  <!-- ================================================================== -->
+  <xacro:macro name="km2_wheel_link" params="name mass ixx iyy izz">
+    <link name="${name}_lw">
+      <inertial>
+        <mass value="${mass}"/>
+        <inertia ixx="${ixx}" ixy="0" ixz="0"
+                 iyy="${iyy}" iyz="0"
+                 izz="${izz}"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+        <geometry><cylinder radius="0.2575" length="0.143"/></geometry>
+        <material name="black"/>
+      </visual>
+      <visual>
+        <origin xyz="0.0 0.073 0.147" rpy="0 0 0"/>
+        <geometry><box size="0.055 0.012 0.22"/></geometry>
+        <material name="grey"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+        <geometry><cylinder radius="0.2575" length="0.143"/></geometry>
+      </collision>
+    </link>
+    <gazebo reference="${name}_lw">
+      <self_collide>false</self_collide>
+      <!-- Lastik-zemin surtunmesi: mu=3.0.
+           2.0 -> 3.0 (2026): 15 cm DIK ENGEL (stage 4) statik asma analizi ile
+           dogrulandi. Teker r=0.2575, basamak h=0.15 -> gereken cekis =
+           sqrt(h(2r-h))/(r-h)*W = 2.17*W. mu=2.0 ile max cekis 2.0*W < 2.17*W
+           => arac basamagi STATIK asamiyordu ve momentum (2.4 m/s) da yetmedi
+           (4 stall-recovery denemesi basarisiz, loglarla dogrulandi). mu=3.0
+           ile statik cekis 3.0*W > 2.17*W => basamak momentumsuz da asilir.
+           Rampayi (%45) da rahatlatir. ki tavani (150 N.m/teker) yeni tutus
+           limitinin (3.0*1167*0.2575 ~ 901 N.m) cok altinda -> patinaj yok.
+           NOT: GERCEK arac icin mekanik ekip agresif dis/grip saglamali. -->
+      <mu1>3.0</mu1>
+      <mu2>3.0</mu2>
+      <kp>1000000.0</kp>
+      <kd>10.0</kd>
+      <minDepth>0.002</minDepth>
+      <!-- maxVel: ODE kontak duzeltme hizi tavani. SWEEP (2026-07-06):
+           0.5 / 5 / 20 -> hem rampayi cikar (%45 dik egim mesh, peak z~1.0)
+           hem duz zeminde kalkar. 100 -> rampada mesh kontagini ziplatip
+           tekeri patinaj yaptirir (toe'da takilir, peak z 0.08). 20 secildi:
+           rampayi asiyor + duz kalkis serbest. 100'e cikarmaya gerek yoktu
+           (duz kalkis zaten her degerde calisiyor). -->
+      <maxVel>20.0</maxVel>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+  </xacro:macro>
+
+  <!-- Ackermann surus: on tekerler direksiyon mafsali uzerinden, arka tekerler sabit aks uzerinden doner. -->
+  <xacro:km2_wheel_link name="front_l" mass="4.0" ixx="0.073" iyy="0.133" izz="0.073"/>
+  <xacro:km2_wheel_link name="front_r" mass="4.0" ixx="0.073" iyy="0.133" izz="0.073"/>
+  <xacro:km2_wheel_link name="rear_l" mass="4.2" ixx="0.077" iyy="0.139" izz="0.077"/>
+  <xacro:km2_wheel_link name="rear_r" mass="4.2" ixx="0.077" iyy="0.139" izz="0.077"/>
+
+  <!-- Dört bağımsız dikey süspansiyon taşıyıcısı.  Bu eklemler gerçek
+       donanımın ölçümleri gelene kadar ayarlanabilir bir simülasyon modelidir;
+       tekerlek temasını ve gövde pitch/roll davranışını gözlemlemeyi sağlar. -->
+  <xacro:macro name="km2_suspension_link" params="name">
+    <link name="${name}_suspension_link">
+      <inertial>
+        <mass value="0.5"/>
+        <inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.002"/>
+      </inertial>
+    </link>
+    <gazebo reference="${name}_suspension_link">
+      <self_collide>false</self_collide>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:km2_suspension_link name="front_l"/>
+  <xacro:km2_suspension_link name="front_r"/>
+  <xacro:km2_suspension_link name="rear_l"/>
+  <xacro:km2_suspension_link name="rear_r"/>
+
+  <joint name="front_l_suspension_joint" type="prismatic">
+    <parent link="base_link"/><child link="front_l_suspension_link"/>
+    <origin xyz="0.55 0.455 0" rpy="0 0 0"/><axis xyz="0 0 1"/>
+    <limit lower="-${suspension_stroke}" upper="${suspension_stroke}" effort="4000" velocity="1.0"/>
+    <dynamics damping="${suspension_damping}" friction="5.0"/>
+  </joint>
+  <joint name="front_r_suspension_joint" type="prismatic">
+    <parent link="base_link"/><child link="front_r_suspension_link"/>
+    <origin xyz="0.55 -0.455 0" rpy="0 0 0"/><axis xyz="0 0 1"/>
+    <limit lower="-${suspension_stroke}" upper="${suspension_stroke}" effort="4000" velocity="1.0"/>
+    <dynamics damping="${suspension_damping}" friction="5.0"/>
+  </joint>
+  <joint name="rear_l_suspension_joint" type="prismatic">
+    <parent link="base_link"/><child link="rear_l_suspension_link"/>
+    <origin xyz="-0.55 0.455 0" rpy="0 0 0"/><axis xyz="0 0 1"/>
+    <limit lower="-${suspension_stroke}" upper="${suspension_stroke}" effort="4000" velocity="1.0"/>
+    <dynamics damping="${suspension_damping}" friction="5.0"/>
+  </joint>
+  <joint name="rear_r_suspension_joint" type="prismatic">
+    <parent link="base_link"/><child link="rear_r_suspension_link"/>
+    <origin xyz="-0.55 -0.455 0" rpy="0 0 0"/><axis xyz="0 0 1"/>
+    <limit lower="-${suspension_stroke}" upper="${suspension_stroke}" effort="4000" velocity="1.0"/>
+    <dynamics damping="${suspension_damping}" friction="5.0"/>
+  </joint>
+
+  <gazebo reference="front_l_suspension_joint"><spring_stiffness>${suspension_spring}</spring_stiffness><spring_reference>0</spring_reference></gazebo>
+  <gazebo reference="front_r_suspension_joint"><spring_stiffness>${suspension_spring}</spring_stiffness><spring_reference>0</spring_reference></gazebo>
+  <gazebo reference="rear_l_suspension_joint"><spring_stiffness>${suspension_spring}</spring_stiffness><spring_reference>0</spring_reference></gazebo>
+  <gazebo reference="rear_r_suspension_joint"><spring_stiffness>${suspension_spring}</spring_stiffness><spring_reference>0</spring_reference></gazebo>
+
+  <link name="front_l_steer_link">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+  </link>
+  <link name="front_r_steer_link">
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <joint name="front_l_steer_joint" type="revolute">
+    <parent link="front_l_suspension_link"/><child link="front_l_steer_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.6" upper="0.6" effort="2000.0" velocity="2.0"/>
+    <dynamics damping="2.0" friction="0.2"/>
+  </joint>
+  <joint name="front_r_steer_joint" type="revolute">
+    <parent link="front_r_suspension_link"/><child link="front_r_steer_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.6" upper="0.6" effort="2000.0" velocity="2.0"/>
+    <dynamics damping="2.0" friction="0.2"/>
+  </joint>
+
+  <!-- Teker spin ekseni +Y (standart): +omega = ileri. Ground-truth (gz model)
+       ile dogrulandi - eksen -Y iken +komut arac'i FIZIKSEL GERI suruyordu
+       (odom ileri diyordu, fizik geri = nav2 geri bildirimi ters). -->
+  <joint name="front_l_joint" type="continuous">
+    <parent link="front_l_steer_link"/><child link="front_l_lw"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <dynamics damping="0.1" friction="0.1"/>
+  </joint>
+  <joint name="front_r_joint" type="continuous">
+    <parent link="front_r_steer_link"/><child link="front_r_lw"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <dynamics damping="0.1" friction="0.1"/>
+  </joint>
+  <!-- Arka tahrik tekerleri: velocity motoru icin effort limiti SART (yoksa fmax=0,
+       476kg arac surulemez, yokusta geri kayar). -->
+  <joint name="rear_l_joint" type="continuous">
+    <parent link="rear_l_suspension_link"/><child link="rear_l_lw"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <!-- effort 1000->2000: rampada gecici tork talebi (kalkis + egim) icin headroom -->
+    <limit effort="2000.0" velocity="30.0"/>
+    <dynamics damping="0.1" friction="0.1"/>
+  </joint>
+  <joint name="rear_r_joint" type="continuous">
+    <parent link="rear_r_suspension_link"/><child link="rear_r_lw"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="2000.0" velocity="30.0"/>
+    <dynamics damping="0.1" friction="0.1"/>
+  </joint>
+
+  <!-- ================================================================== -->
+  <!--  CUBEPILOT IMU LINK (Sensör Füzyon Merkezi)                        -->
+  <!--  CubePilot HERE3+ GPS/IMU - Gövde üstüne monte                    -->
+  <!-- ================================================================== -->
+  <link name="cubepilot_link">
+    <visual>
+      <geometry><box size="0.08 0.08 0.04"/></geometry>
+      <material name="dark_grey"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.08 0.08 0.04"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.0002" ixy="0" ixz="0"
+               iyy="0.0002" iyz="0"
+               izz="0.0003"/>
+    </inertial>
+  </link>
+  <joint name="cubepilot_joint" type="fixed">
+    <parent link="base_link"/><child link="cubepilot_link"/>
+    <!-- Govde ust kismi yakininda (mesh top=0.54) -->
+    <origin xyz="0 0 0.49" rpy="0 0 0"/>
+  </joint>
+
+  <!-- CubePilot IMU Frame (sensör füzyon referansı) -->
+  <link name="imu_link">
+    <inertial>
+      <mass value="0.01"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0"
+               iyy="0.0001" iyz="0"
+               izz="0.0001"/>
+    </inertial>
+  </link>
+  <joint name="imu_joint" type="fixed">
+    <parent link="cubepilot_link"/><child link="imu_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- CubePilot GPS Anteni -->
+  <link name="gps_link">
+    <visual>
+      <geometry><cylinder radius="0.04" length="0.02"/></geometry>
+      <material name="green"/>
+    </visual>
+    <inertial>
+      <mass value="0.05"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0"
+               iyy="0.0001" iyz="0"
+               izz="0.0001"/>
+    </inertial>
+  </link>
+  <joint name="gps_joint" type="fixed">
+    <parent link="cubepilot_link"/><child link="gps_link"/>
+    <!-- GPS anteni CubePilot'un üstünde -->
+    <origin xyz="0 0 0.04" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================== -->
+  <!--  TARET SİSTEMİ (Değişiklik yok)                                   -->
+  <!-- ================================================================== -->
+  <link name="turret_base_link">
+    <visual><geometry><box size="0.2 0.2 0.05"/></geometry><material name="black"/></visual>
+    <collision><geometry><box size="0.2 0.2 0.05"/></geometry></collision>
+    <inertial><mass value="2.0"/><inertia ixx="0.005" ixy="0" ixz="0" iyy="0.005" iyz="0" izz="0.005"/></inertial>
+  </link>
+  <joint name="turret_base_joint" type="fixed">
+    <parent link="base_link"/><child link="turret_base_link"/>
+    <!-- Mesh top = 0.54, taret onun ustunde -->
+    <origin xyz="0 0 0.57" rpy="0 0 0"/>
+  </joint>
+
+  <gazebo reference="turret_base_link">
+    <visual>
+      <material>
+        <ambient>0.0 0.0 0.0 1.0</ambient>
+        <diffuse>0.0 0.0 0.0 1.0</diffuse>
+        <specular>0.1 0.1 0.1 1.0</specular>
+      </material>
+    </visual>
+  </gazebo>
+
+  <link name="turret_link">
+    <visual><geometry><box size="0.2 0.2 0.1"/></geometry><material name="black"/></visual>
+    <collision><geometry><box size="0.2 0.2 0.1"/></geometry></collision>
+    <inertial><mass value="5.0"/><inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/></inertial>
+  </link>
+  <joint name="turret_yaw_joint" type="revolute">
+    <parent link="turret_base_link"/><child link="turret_link"/>
+    <origin xyz="0 0 0.05" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-3.14" upper="3.14" effort="100.0" velocity="1.0"/>
+    <dynamics damping="15.0" friction="15.0"/>
+  </joint>
+
+  <gazebo reference="turret_link">
+    <visual>
+      <material>
+        <ambient>0.0 0.0 0.0 1.0</ambient>
+        <diffuse>0.0 0.0 0.0 1.0</diffuse>
+        <specular>0.1 0.1 0.1 1.0</specular>
+      </material>
+    </visual>
+    <gravity>false</gravity>
+  </gazebo>
+
+  <link name="barrel_link">
+    <visual><origin xyz="0.2 0 0" rpy="0 1.5708 0"/><geometry><cylinder radius="0.02" length="0.4"/></geometry><material name="black"/></visual>
+    <collision><origin xyz="0.2 0 0" rpy="0 1.5708 0"/><geometry><cylinder radius="0.02" length="0.4"/></geometry></collision>
+    <inertial><mass value="2.0"/><inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/></inertial>
+  </link>
+  <joint name="barrel_pitch_joint" type="revolute">
+    <parent link="turret_link"/><child link="barrel_link"/>
+    <origin xyz="0.1 0 0.05" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.8" upper="0.5" effort="100.0" velocity="1.0"/>
+    <dynamics damping="20.0" friction="20.0"/>
+  </joint>
+
+  <gazebo reference="barrel_link">
+    <visual>
+      <material>
+        <ambient>0.0 0.0 0.0 1.0</ambient>
+        <diffuse>0.0 0.0 0.0 1.0</diffuse>
+        <specular>0.1 0.1 0.1 1.0</specular>
+      </material>
+    </visual>
+    <gravity>false</gravity>
+  </gazebo>
+
+  <link name="laser_bullet_link">
+    <inertial><mass value="0.001"/><inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/></inertial>
+  </link>
+  <joint name="laser_bullet_joint" type="fixed">
+    <parent link="barrel_link"/><child link="laser_bullet_link"/>
+    <origin xyz="0.4 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ================================================================== -->
+  <!--  KAMERA SİSTEMİ                                                    -->
+  <!--  - Ön kamera: Derinlik kamerası (depth + RGB) + Nesne algılama     -->
+  <!--  - Arka kamera: Standart RGB (değişiklik yok)                      -->
+  <!--  - Namlu kamerası: Standart RGB (değişiklik yok)                   -->
+  <!-- ================================================================== -->
+
+  <!-- ÖN DERİNLİK KAMERASI (Intel RealSense D435 tarzı) -->
+  <link name="camera_front_link">
+    <visual>
+      <geometry><box size="0.09 0.025 0.025"/></geometry>
+      <material name="dark_grey"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.09 0.025 0.025"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.072"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+  <joint name="camera_front_link_joint" type="fixed">
+    <parent link="base_link"/><child link="camera_front_link"/>
+    <!-- DUZ (yatay) bakar. Onceki 17 derece yukari egim depthimage_to_laserscan'i
+         bozuyordu (tum isinlar yukari -> /scan tamamen bos) ve YOLO'nun alcak
+         engelleri (kuka/tabela) gormesini zorlastiriyordu. Yatay kamera 0.45 m
+         yukseklikte duz zemini ENGEL SAYMAZ (isinlar yatay, zemin altta kalir);
+         sadece dikey engelleri ve yaklasilan rampayi gorur. Not: /scan su an nav2
+         costmap'lerinde kullanilmiyor (engel kaynagi /vision/obstacle_points). -->
+    <origin xyz="0.76 0 0.45" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Ön kamera optik frame (ROS konvansiyonu: z=ileri, x=sağ, y=aşağı) -->
+  <link name="camera_front_optical_frame">
+    <inertial><mass value="0.001"/><inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/></inertial>
+  </link>
+  <joint name="camera_front_optical_joint" type="fixed">
+    <parent link="camera_front_link"/><child link="camera_front_optical_frame"/>
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+  </joint>
+
+  <!-- Level projection frame for the depth-camera-derived LaserScan. -->
+  <link name="depth_scan_link">
+    <inertial>
+      <mass value="0.001"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+  <joint name="depth_scan_joint" type="fixed">
+    <parent link="base_link"/><child link="depth_scan_link"/>
+    <origin xyz="0.76 0 0.45" rpy="0 0 0"/>
+  </joint>
+
+  <gazebo reference="camera_front_link">
+    <sensor name="cam_front" type="depth">
+      <!-- 15 Hz is sufficient for navigation and leaves CPU time for AMCL/TF. -->
+      <update_rate>15</update_rate>
+      <camera>
+        <horizontal_fov>1.211</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.1</near>
+          <far>50.0</far>
+        </clip>
+      </camera>
+      <plugin name="cam_front_plugin" filename="libgazebo_ros_camera.so">
+        <ros>
+          <remapping>~/image_raw:=/cam_front/image_raw</remapping>
+          <remapping>~/depth/image_raw:=/cam_front/depth/image_raw</remapping>
+          <remapping>~/camera_info:=/cam_front/camera_info</remapping>
+          <remapping>~/depth/camera_info:=/cam_front/depth/camera_info</remapping>
+          <remapping>~/points:=/cam_front/points</remapping>
+        </ros>
+        <frame_name>camera_front_optical_frame</frame_name>
+        <min_depth>0.1</min_depth>
+        <max_depth>50.0</max_depth>
+      </plugin>
+    </sensor>
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <xacro:macro name="cam_setup" params="name link_name parent x y z topic info_topic yaw hfov:=1.089">
+    <link name="${link_name}">
+      <visual>
+        <geometry><box size="0.03 0.03 0.03"/></geometry>
+        <material name="black"/>
+      </visual>
+      <inertial><mass value="0.01"/><inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/></inertial>
+    </link>
+    <joint name="${link_name}_joint" type="fixed">
+      <parent link="${parent}"/><child link="${link_name}"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 ${yaw}"/>
+    </joint>
+    <gazebo reference="${link_name}">
+      <sensor name="${name}" type="camera">
+        <update_rate>30</update_rate>
+        <camera>
+          <horizontal_fov>${hfov}</horizontal_fov>
+          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+        </camera>
+        <plugin name="${name}_plugin" filename="libgazebo_ros_camera.so">
+          <ros>
+            <remapping>~/image_raw:=${topic}</remapping>
+            <remapping>~/camera_info:=${info_topic}</remapping>
+          </ros>
+        </plugin>
+      </sensor>
+      <material>Gazebo/Black</material>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:cam_setup name="cam_rear"   link_name="camera_rear_link"   parent="base_link"   x="-0.76" y="0" z="0.45"  topic="/cam_rear/image_raw" info_topic="/cam_rear/camera_info" yaw="3.1415"/>
+  <!-- Nişan kamerası: dar FOV (~20°) — 10 m'de iç halka ~11 px, 50p nişan için gerekli -->
+  <xacro:cam_setup name="cam_barrel" link_name="camera_barrel_link" parent="barrel_link" x="0.3"  y="0" z="0.04" topic="/cam_barrel/image_raw" info_topic="/cam_barrel/camera_info" yaw="0" hfov="0.35"/>
+
+  <!-- ================================================================== -->
+  <!--  CUBEPILOT IMU GAZEBO PLUGIN                                       -->
+  <!--  Sensör füzyon verisi: IMU + GPS -> EKF                            -->
+  <!-- ================================================================== -->
+  <gazebo reference="imu_link">
+    <gravity>true</gravity>
+    <sensor name="cubepilot_imu" type="imu">
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <visualize>false</visualize>
+      <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+        <ros>
+          <remapping>~/out:=imu/data</remapping>
+        </ros>
+        <frame_name>imu_link</frame_name>
+        <initial_orientation_as_reference>false</initial_orientation_as_reference>
+      </plugin>
+      <imu>
+        <angular_velocity>
+          <x><noise type="gaussian"><mean>0.0</mean><stddev>2e-4</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0.0</mean><stddev>2e-4</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0.0</mean><stddev>2e-4</stddev></noise></z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x><noise type="gaussian"><mean>0.0</mean><stddev>1.7e-2</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0.0</mean><stddev>1.7e-2</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0.0</mean><stddev>1.7e-2</stddev></noise></z>
+        </linear_acceleration>
+      </imu>
+    </sensor>
+  </gazebo>
+
+  <!-- CubePilot GPS Gazebo Plugin -->
+  <gazebo reference="gps_link">
+    <sensor name="cubepilot_gps" type="gps">
+      <always_on>true</always_on>
+      <update_rate>5</update_rate>
+      <plugin name="gps_plugin" filename="libgazebo_ros_gps_sensor.so">
+        <ros>
+          <remapping>~/out:=gps/fix</remapping>
+        </ros>
+        <frame_name>gps_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ================================================================== -->
+  <!--  SONAR (HC-SR04) SENSÖRLERİ (360° Çevre Koruması)                   -->
+  <!-- ================================================================== -->
+  <!-- Toplam altı sensör: iki ön köşe + iki arka köşe (yana bakar), ve    -->
+  <!-- iki arka-merkez sensör (arkaya bakar, geri manevra körlüğünü        -->
+  <!-- kapatır). Sensörler tekerleklerin üzerinde değil, gövde tampon      -->
+  <!-- köşelerindedir. Hepsi collision_monitor'a range kaynağı olarak,     -->
+  <!-- ayrıca local costmap'e RangeSensorLayer üzerinden bağlanır.         -->
+  <xacro:macro name="corner_sonar" params="name x y yaw">
+    <link name="${name}_link">
+      <visual>
+        <geometry><box size="0.02 0.04 0.02"/></geometry>
+        <material name="dark_grey"/>
+      </visual>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="base_link"/><child link="${name}_link"/>
+      <origin xyz="${x} ${y} 0.35" rpy="0 0 ${yaw}"/>
+    </joint>
+    <gazebo reference="${name}_link">
+      <sensor type="ray" name="${name}">
+        <visualize>true</visualize>
+        <update_rate>15</update_rate>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>12</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.26</min_angle>
+              <max_angle>0.26</max_angle>
+            </horizontal>
+          </scan>
+          <range><min>0.02</min><max>4.0</max><resolution>0.01</resolution></range>
+        </ray>
+        <plugin name="gazebo_ros_${name}" filename="libgazebo_ros_ray_sensor.so">
+          <ros><remapping>~/out:=${name}</remapping></ros>
+          <output_type>sensor_msgs/Range</output_type>
+          <radiation_type>ultrasound</radiation_type>
+          <frame_name>${name}_link</frame_name>
+        </plugin>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:corner_sonar name="sonar_corner_front_left"
+                      x="0.70" y="0.48" yaw="1.5708"/>
+  <xacro:corner_sonar name="sonar_corner_front_right"
+                      x="0.70" y="-0.48" yaw="-1.5708"/>
+  <xacro:corner_sonar name="sonar_corner_rear_left"
+                      x="-0.70" y="0.48" yaw="1.5708"/>
+  <xacro:corner_sonar name="sonar_corner_rear_right"
+                      x="-0.70" y="-0.48" yaw="-1.5708"/>
+
+  <!-- Arka-merkez sensörler: doğrudan geriye bakar (yaw≈±180°, 0.15 rad -->
+  <!-- dışa açı ile köşe sensörleriyle örtüşmeyi azaltır). Arka tampon    -->
+  <!-- x=-0.72; ±0.30 m yanal + ±0.26 rad FOV, 1.06 m arka genişliği      -->
+  <!-- ~0.5 m mesafeden itibaren tam kapatır (kör geri manevra koruması). -->
+  <xacro:corner_sonar name="sonar_rear_left"
+                      x="-0.72" y="0.30" yaw="${pi - 0.15}"/>
+  <xacro:corner_sonar name="sonar_rear_right"
+                      x="-0.72" y="-0.30" yaw="${-pi + 0.15}"/>
+
+  <!-- ================================================================== -->
+  <!--  DERINLIK KAMERASINI LASERSCAN CEVIRME REFERANSI                   -->
+  <!--  depthimage_to_laserscan paketi ile cam_front/depth/image_raw      -->
+  <!--  topicini /scan topicine ceviriyoruz (LiDAR yerine)                -->
+  <!--  Bu node launch dosyasinda calistirilir.                           -->
+  <!--  Detaylar icin sim_launch.py dosyasina bakiniz.                    -->
+  <!-- ================================================================== -->
+
+  <!-- ================================================================== -->
+  <!--  ROS2_CONTROL DONANIM ARAYUZU (Gazebo Classic)                     -->
+  <!--  RWD Ackermann: arka tekerler velocity (traksiyon),                -->
+  <!--  on direksiyon joint'leri position, on tekerler serbest (state).   -->
+  <!-- ================================================================== -->
+  <ros2_control name="GazeboSystem" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+
+    <!-- Süspansiyon mafsalları komutsuzdur; Gazebo yay/amortisör fiziği ile
+         hareket eder. State interface'leri ZORUNLU: joint_state_broadcaster
+         bunları /joint_states'e yazmazsa robot_state_publisher tekerlek TF
+         zincirini üretemez ve RViz'de tekerlekler kaybolur. -->
+    <joint name="front_l_suspension_joint">
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="front_r_suspension_joint">
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="rear_l_suspension_joint">
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="rear_r_suspension_joint">
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <!-- Arka tahrik tekerleri: hiz komutu -->
+    <joint name="rear_l_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="rear_r_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <!-- On direksiyon mafsallari: pozisyon komutu (Ackermann acilari) -->
+    <joint name="front_l_steer_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="front_r_steer_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <!-- On tekerler: komutsuz, yerden temasla serbest doner (RWD'de gercekci) -->
+    <joint name="front_l_joint">
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="front_r_joint">
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <!-- ================================================================== -->
+  <!--  GAZEBO PLUGINLERİ                                                 -->
+  <!-- ================================================================== -->
+  <gazebo>
+    <!-- ros2_control: controller_manager'i Gazebo icinde calistirir.          -->
+    <!-- ackermann_steering_controller + joint_state_broadcaster yuklenir.      -->
+    <!-- /odom ve odom->base_footprint TF'i bu controller yayinlar.             -->
+    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+      <parameters>$(arg controllers_yaml)</parameters>
+      <robot_param>robot_description</robot_param>
+      <robot_param_node>robot_state_publisher</robot_param_node>
+    </plugin>
+
+    <!-- Turret/barrel joint durumlarini /joint_states'e yayinlar (bu joint'ler -->
+    <!-- ros2_control'de degil, asagidaki barrel plugin'i ile surulur). Surus/   -->
+    <!-- direksiyon joint'leri joint_state_broadcaster tarafindan yayinlanir;    -->
+    <!-- robot_state_publisher ikisini isme gore birlestirir.                    -->
+    <plugin name="gazebo_joint_state" filename="libgazebo_ros_joint_state_publisher.so">
+      <ros>
+        <remapping>~/out:=joint_states</remapping>
+      </ros>
+      <update_rate>50</update_rate>
+      <joint_name>turret_yaw_joint</joint_name>
+      <joint_name>barrel_pitch_joint</joint_name>
+    </plugin>
+
+    <!-- Ground-truth poz: ground_truth_localization map->odom'u GERCEK pozdan
+         hesaplamak icin kullanir (odom suruklenmesini telafi eder; RViz==Gazebo).
+         frame_name dahili olarak world'e gore olcer (model'de 'map' linki yok);
+         world==map oldugu icin poz dogrudan map->base olarak kullanilir. -->
+    <plugin name="gt_p3d" filename="libgazebo_ros_p3d.so">
+      <ros>
+        <remapping>odom:=/ground_truth/state</remapping>
+      </ros>
+      <!-- base_footprint: Gazebo, base_footprint->base_link sabit joint'inden dolayi
+           base_link'i base_footprint'e LUMP eder; Gazebo'da 'base_link' linki YOKTUR
+           (eski deger 'base_link does not exist' hatasi veriyordu). base_footprint
+           model'in kok/ govde linkidir ve x,y,yaw arac pozudur. -->
+      <body_name>base_footprint</body_name>
+      <!-- world'e gore olcer (kanonik ground-truth). world==map (spawn pozu eski
+           statik map->odom ile birebir ayni) oldugundan poz dogrudan map->base'tir. -->
+      <frame_name>world</frame_name>
+      <update_rate>50.0</update_rate>
+      <gaussian_noise>0.0</gaussian_noise>
+    </plugin>
+
+    <!-- Barrel/turret pozisyon kontrolu (barrel_controller.py -> barrel_trajectory) -->
+    <plugin name="gazebo_joint_ctrl" filename="libgazebo_ros_joint_pose_trajectory.so">
+      <ros>
+        <remapping>set_joint_trajectory:=barrel_trajectory</remapping>
+      </ros>
+      <update_rate>50</update_rate>
+      <reference_link>base_footprint</reference_link>
+      <joint_name>turret_yaw_joint</joint_name>
+      <joint_name>barrel_pitch_joint</joint_name>
+    </plugin>
+  </gazebo>
+
+</robot>
