@@ -18,18 +18,37 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    use_rviz_arg = DeclareLaunchArgument(
+        "use_rviz", default_value="true",
+        description="RViz2'yi onceden hazirlanmis lokalizasyon konfigurasyonuyla ac/kapat."
+    )
+    use_rviz = LaunchConfiguration("use_rviz")
+
     bringup_share = get_package_share_directory("karamuhafiz_bringup")
 
     manual_drive = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(bringup_share, "launch", "manual_drive.launch.py")
         )
+    )
+
+    rviz_config = os.path.join(bringup_share, "rviz", "localization.rviz")
+    rviz_node = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2",
+        output="screen",
+        arguments=["-d", rviz_config],
+        parameters=[{"use_sim_time": True}],
+        condition=IfCondition(use_rviz),
     )
 
     ekf_local_yaml = os.path.join(bringup_share, "config", "ekf_local.yaml")
@@ -71,8 +90,10 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        use_rviz_arg,
         manual_drive,
         ekf_local_node,
         navsat_transform_node,
         ekf_global_node,
+        rviz_node,
     ])

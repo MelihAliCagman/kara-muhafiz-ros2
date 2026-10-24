@@ -1,0 +1,111 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 0
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /TF1
+        - /Odometry (yerel - odom)1
+        - /Odometry (global - map)1
+      Splitter Ratio: 0.5
+    Tree Height: 700
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Name: Grid
+      Reference Frame: map
+      Value: true
+    - Class: rviz_default_plugins/RobotModel
+      Description Topic:
+        Value: /robot_description
+      Enabled: true
+      Name: RobotModel
+      Visual Enabled: true
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Name: TF
+      Show Names: true
+      Show Axes: true
+      Show Arrows: false
+      Value: true
+    - Alpha: 0.7
+      Class: rviz_default_plugins/LaserScan
+      Color: 0; 170; 255
+      Enabled: true
+      Name: LiDAR (/scan)
+      Size (m): 0.05
+      Style: Flat Squares
+      Topic:
+        Value: /scan
+      Value: true
+    - Class: rviz_default_plugins/Odometry
+      Enabled: true
+      Name: Odometry (yerel - odom)
+      Keep: 200
+      Shape:
+        Alpha: 1
+        Value: Arrow
+      Color: 0; 255; 0
+      Topic:
+        Value: /odometry/filtered
+      Value: true
+    - Class: rviz_default_plugins/Odometry
+      Enabled: true
+      Name: Odometry (global - map)
+      Keep: 200
+      Shape:
+        Alpha: 1
+        Value: Arrow
+      Color: 255; 170; 0
+      Topic:
+        Value: /odometry/filtered_map
+      Value: true
+    - Class: rviz_default_plugins/Odometry
+      Enabled: false
+      Name: Odometry (ham GPS)
+      Keep: 200
+      Shape:
+        Alpha: 1
+        Value: Axes
+      Color: 255; 0; 255
+      Topic:
+        Value: /odometry/gps
+      Value: false
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 12
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Name: Current View
+      Pitch: 0.6
+      Target Frame: base_footprint
+      Yaw: 0.78
+    Saved: ~
+Window Geometry:
+  Height: 900
+  Width: 1400
+  X: 50
+  Y: 50
