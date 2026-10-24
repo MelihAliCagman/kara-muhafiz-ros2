@@ -1,0 +1,46 @@
+# Yerel EKF: tekerlek odometrisi + IMU -> odom->base_footprint TF.
+# robot_localization'un standart "local EKF" rolu: surekli, pursuzsuz (sicrama
+# yapmayan) bir yerel poz tahmini uretir. GPS BURAYA DAHIL EDILMEZ (GPS
+# sicramali/duzensiz olabilir, yerel TF'in surekliligini bozar) - GPS yalnizca
+# global EKF'te (ekf_global.yaml) kullanilir.
+ekf_filter_node_odom:
+  ros__parameters:
+    frequency: 30.0
+    sensor_timeout: 0.2
+    two_d_mode: true
+    publish_tf: true
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_footprint
+    world_frame: odom
+
+    # Tekerlek odometrisi (ackermann_steering_controller'dan ham veri).
+    # Pozisyon (x,y) + sapma acisi (yaw) + ileri hiz (vx) + donus hizi (vyaw)
+    # fuse ediliyor. z/roll/pitch two_d_mode:true ile zaten sifirlaniyor,
+    # vy/vz tekerlekli bir aractan guvenilir olculemez.
+    odom0: /ackermann_steering_controller/odometry
+    odom0_config: [true,  true,  false,
+                   false, false, true,
+                   true,  false, false,
+                   false, false, true,
+                   false, false, false]
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 10
+
+    # IMU: sadece yon (yaw) ve acisal hiz (vyaw) fuse ediliyor. Ivme (ax/ay/az)
+    # bilerek disarida birakildi - cift integrasyonla hizli drift yapar,
+    # tekerlek odometrisi zaten hiz bilgisini daha guvenilir veriyor.
+    imu0: /imu/data
+    imu0_config: [false, false, false,
+                  false, false, true,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_remove_gravitational_acceleration: true
+    imu0_queue_size: 10
+
+    use_control: false

@@ -1,0 +1,18 @@
+# GPS (enlem/boylam, sensor_msgs/NavSatFix) -> yerel kartezyen odometri
+# (nav_msgs/Odometry) donusturucusu. Cikisi (/odometry/gps) global EKF'in
+# (ekf_global.yaml) odom1 girdisi olarak kullanilir.
+navsat_transform_node:
+  ros__parameters:
+    frequency: 30.0
+    delay: 3.0
+    magnetic_declination_radians: 0.0
+    yaw_offset: 0.0
+    zero_altitude: true
+    broadcast_utm_transform: false
+    publish_filtered_gps: false
+    use_odometry_yaw: true
+    # wait_for_datum:false -> ilk gecerli GPS olcumunu referans (0,0) noktasi
+    # olarak otomatik alir. Simule GPS'in gercek bir enlem/boylam referansi
+    # olmadigindan (Gazebo world'u gercek koordinatlara baglanmamis), elle
+    # datum vermek yerine bu otomatik yontem tercih edildi.
+    wait_for_datum: false

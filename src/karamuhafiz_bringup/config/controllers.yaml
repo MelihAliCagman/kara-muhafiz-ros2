@@ -37,6 +37,12 @@ ackermann_steering_controller:
 
     base_frame_id: base_footprint
     odom_frame_id: odom
-    enable_odom_tf: true
+    # Hafta 2 Gun 1: odom->base_footprint TF'i artik robot_localization'daki
+    # yerel EKF yayinliyor (tekerlek odometrisi + IMU fuzyonuyla, ham
+    # tekerlek odometrisinden daha dogru). Bu controller YALNIZCA ham
+    # /ackermann_steering_controller/odometry verisini uretir (EKF'in girdisi
+    # olarak); TF yayinini KAPATIYORUZ ki iki node ayni transform'u birden
+    # yayinlamasin (cakisma/TF_REPEATED_DATA onlenir).
+    enable_odom_tf: false
 
     publish_rate: 50.0
