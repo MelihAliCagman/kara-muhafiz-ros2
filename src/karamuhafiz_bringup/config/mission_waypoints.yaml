@@ -1,0 +1,14 @@
+# Otonom gorev noktalari - KAYNAK KODA GOMULMEMIS, buradan degistirilir
+# (gorev sartnamesi zorunlu kiliyor). Koordinatlar "map" cercevesinde (Hafta
+# 2'deki global EKF'in urettigi cerceve).
+#
+# !!! YER TUTUCU DEGERLER !!! Asagidaki x/y/yaw degerleri GERCEK PARKURDA
+# GPS ile olculerek DEGISTIRILMELIDIR - simdilik sadece node'un calistigini
+# dogrulamak icin ornek/placeholder sayilardir (bkz. Hafta 3 raporu).
+waypoint_mission_node:
+  ros__parameters:
+    frame_id: "map"
+    # Her indeks bir gorev noktasi: waypoint_x[i], waypoint_y[i], waypoint_yaw[i]
+    waypoint_x: [5.0, 10.0, 15.0, 10.0, 0.0]
+    waypoint_y: [0.0, 3.0, 0.0, -3.0, 0.0]
+    waypoint_yaw: [0.0, 0.0, 3.14159, 3.14159, 0.0]

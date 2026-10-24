@@ -23,6 +23,7 @@ setup(
             'manual_drive_node = karamuhafiz_control.manual_drive_node:main',
             'keyboard_teleop_node = karamuhafiz_control.keyboard_teleop_node:main',
             'global_keyboard_teleop_node = karamuhafiz_control.global_keyboard_teleop_node:main',
+            'waypoint_mission_node = karamuhafiz_control.waypoint_mission_node:main',
         ],
     },
 )
