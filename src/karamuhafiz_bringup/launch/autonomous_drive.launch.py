@@ -46,6 +46,25 @@ def generate_launch_description():
     nav2_params = os.path.join(bringup_share, "config", "nav2_params.yaml")
     mission_yaml = os.path.join(bringup_share, "config", "mission_waypoints.yaml")
 
+    # HATA DUZELTMESI (canli testte bulundu, 2026-10-24): nav2_params.yaml'da
+    # default_nav_to_pose_bt_xml / default_nav_through_poses_bt_xml SADECE
+    # dosya adi olarak yazilmisti ("navigate_to_pose_w_replanning_and_recovery.xml").
+    # bt_navigator bunu bulunduğu dizine (calisma dizini) gore aradigi icin
+    # "Couldn't open input XML file" hatasiyla configure asamasinda cakiyor,
+    # bu da lifecycle_manager'in TUM Nav2 yiginini "Aborting bringup" ile
+    # iptal etmesine - ve dolayisiyla hicbir hiz komutu uretilmemesine sebep
+    # oluyordu. Cozum: TAM dosya yolunu burada (Python'da, nav2_bt_navigator
+    # paketinin kendi share dizininden) hesaplayip, YAML'daki bare-filename
+    # degerlerinin UZERINE parametre olarak geciyoruz.
+    bt_navigator_share = get_package_share_directory("nav2_bt_navigator")
+    bt_xml_dir = os.path.join(bt_navigator_share, "behavior_trees")
+    bt_navigator_overrides = {
+        "default_nav_to_pose_bt_xml": os.path.join(
+            bt_xml_dir, "navigate_to_pose_w_replanning_and_recovery.xml"),
+        "default_nav_through_poses_bt_xml": os.path.join(
+            bt_xml_dir, "navigate_through_poses_w_replanning_and_recovery.xml"),
+    }
+
     nav2_nodes = [
         Node(
             package="nav2_controller", executable="controller_server",
@@ -69,7 +88,7 @@ def generate_launch_description():
         Node(
             package="nav2_bt_navigator", executable="bt_navigator",
             name="bt_navigator", output="screen",
-            parameters=[nav2_params],
+            parameters=[nav2_params, bt_navigator_overrides],
         ),
         Node(
             package="nav2_waypoint_follower", executable="waypoint_follower",
