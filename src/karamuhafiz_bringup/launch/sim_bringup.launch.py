@@ -171,6 +171,40 @@ def generate_launch_description():
     with open(sdf_path, "w") as f:
         subprocess.run(["gz", "sdf", "-p", urdf_path], check=True, stdout=f)
 
+    # HATA DUZELTMESI (Hafta 3 canli testinde bulundu, 2026-10-24): verilen
+    # world dosyasinda <spherical_coordinates> (gercek enlem/boylam referansi)
+    # tanimli DEGIL - Gazebo'nun GPS eklentisi bu durumda varsayilan olarak
+    # (0 derece, 0 derece) kullaniyor (Ekvator + Greenwich meridyeninin
+    # kesistigi nokta). Bu nokta TAM OLARAK UTM dilim/yarikure sinirinin
+    # UZERINDE - navsat_transform_node'un GPS->yerel-kartezyen donusumu bu
+    # noktada matematiksel bir sureksizlik iceriyor: GPS olcumundeki en
+    # kucuk gurultu bile dilim/yarikure sinirini gecince donusturulmus konum
+    # YUZLERCE KILOMETRE zipliyor (global EKF -> map costmap'i de cilgin
+    # degerler almaya basliyor, Nav2 hic yol planlayamiyor). Verilen world
+    # dosyasina DOKUNMADAN (LIDAR/chase_cam enjeksiyonuyla ayni yontem):
+    # <world name="..."> etiketinden hemen sonra sabit bir referans nokta
+    # (Ankara) ekleyip SONUCU gecici bir dosyaya yaziyoruz, orijinal dosya
+    # degismiyor.
+    with open(world_file, "r") as f:
+        world_xml = f.read()
+    spherical_coords_snippet = """
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <latitude_deg>39.925533</latitude_deg>
+      <longitude_deg>32.866287</longitude_deg>
+      <elevation>850</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
+"""
+    world_xml = re.sub(
+        r'(<world\s+name="[^"]*">)',
+        r"\1" + spherical_coords_snippet,
+        world_xml, count=1,
+    )
+    world_path = os.path.join(tmp_dir, "teknofest_parkur_with_geo.world")
+    with open(world_path, "w") as f:
+        f.write(world_xml)
+
     # gazebo_ros2_control (0.4.x, Humble apt) bilinen bug: <robot_param_node> ile
     # robot_description'i uzaktan cekip controller_manager node'una "--param
     # robot_description:=<xml>" seklinde komut satiri override'i olarak aktariyor.
@@ -194,7 +228,7 @@ def generate_launch_description():
 
     gzserver = ExecuteProcess(
         cmd=[
-            "gzserver", world_file,
+            "gzserver", world_path,
             "-s", "libgazebo_ros_init.so",
             "-s", "libgazebo_ros_factory.so",
         ],
