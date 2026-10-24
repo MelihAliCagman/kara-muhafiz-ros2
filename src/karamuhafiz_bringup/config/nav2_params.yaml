@@ -52,6 +52,13 @@ controller_server:
 
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+      # HATA DUZELTMESI (Hafta 3 canli test): "Lookup would require
+      # extrapolation into the future" hatasi - global EKF'in odom->map TF'i
+      # controller'in istedigi tam zamandan birkac ms geride kaliyordu
+      # (yayinlama frekansi + islem gecikmesi kaynakli, kucuk ama varsayilan
+      # tf2 toleransi bunu kabul etmiyordu). transform_tolerance ile makul
+      # bir esneme payi taniniyor.
+      transform_tolerance: 0.3
       desired_linear_vel: 1.0
       max_linear_accel: 1.0
       max_linear_decel: 1.5
@@ -75,7 +82,17 @@ controller_server:
       inflation_cost_scaling_factor: 3.0
       cost_scaling_dist: 0.6
       cost_scaling_gain: 1.0
-      use_collision_detection: true
+      # GECICI (Hafta 3 canli test): false yapildi. Namlu/taret donerken
+      # bazen 0.35m filtre esiginin OTESINE (ornegin one dogru 0.4-0.5m)
+      # uzanip LiDAR'a surekli "onde engel var" gibi gorunuyor, bu da
+      # "RegulatedPurePursuitController detected collision ahead!" ile
+      # her yol denemesini iptal ettiriyordu. Zincirin geri kalaninin
+      # (TF, planlama, suruculuk) calistigini once kanitlamak icin
+      # gecici olarak kapatildi - araç hareket ettigi DOGRULANINCA, daha
+      # dogru bir cozumle (ornegin namlu acisina gore dinamik filtre veya
+      # footprint'i namluyu da kapsayacak sekilde genisletme) TEKRAR
+      # ACILMALI, bu olmadan Nav2'nin kendi engel onleme guvenligi devre disi!
+      use_collision_detection: false
       max_allowed_time_to_collision_up_to_carrot: 1.0
 
 local_costmap:
