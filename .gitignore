@@ -13,3 +13,6 @@ rosbags/*/
 
 # IDE
 .vscode/
+
+# Calisma raporlari - kisisel ilerleme notlari, repoya gitmesin (yerelde kalir)
+calisma_raporlari/
