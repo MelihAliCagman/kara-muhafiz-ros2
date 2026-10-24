@@ -101,15 +101,17 @@ def generate_launch_description():
             parameters=[nav2_params],
             remappings=[
                 ("cmd_vel", "cmd_vel_nav2_raw"),
-                # collision_monitor'dan GECECEK (dogrudan twist_mux'a degil) -
-                # son-care yakin-mesafe kontrolu icin.
-                ("cmd_vel_smoothed", "/cmd_vel_nav2_unchecked"),
+                # GECICI (Hafta 3 canli test, bkz. collision_detection_temporarily_disabled
+                # hafiza notu): normalde buradan collision_monitor'a gidip
+                # oradan twist_mux'a ulasmaliydi. collision_monitor'un
+                # StopZone'u (1m) da ayni namlu/taret kendi-algilama sorunu
+                # yuzunden komutu surekli sifirlayip "Failed to make progress"
+                # ile gorevi iptal ettiriyordu. collision_monitor GECICI
+                # olarak devre disi birakildi (asagidaki Node tanimi ve
+                # lifecycle_manager listesinden cikarildi) - DUZGUN BIR
+                # NAMLU-FARKINDA FILTRE ILE GERI EKLENMELI, teslimden once!
+                ("cmd_vel_smoothed", "/cmd_vel_nav2"),
             ],
-        ),
-        Node(
-            package="nav2_collision_monitor", executable="collision_monitor",
-            name="collision_monitor", output="screen",
-            parameters=[os.path.join(bringup_share, "config", "collision_monitor.yaml")],
         ),
         Node(
             package="nav2_lifecycle_manager", executable="lifecycle_manager",
@@ -119,7 +121,6 @@ def generate_launch_description():
                 {"node_names": [
                     "controller_server", "planner_server", "behavior_server",
                     "bt_navigator", "waypoint_follower", "velocity_smoother",
-                    "collision_monitor",
                 ]},
             ],
         ),
