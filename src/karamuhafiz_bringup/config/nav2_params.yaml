@@ -96,6 +96,10 @@ local_costmap:
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
+        # HATA DUZELTMESI (Hafta 3 canli test): Nav2'nin yerlesik "aracin
+        # kendi ayak izini her zaman temiz tut" mekanizmasi - acikca
+        # etkinlestirildi (varsayilani guvenceye almak icin).
+        footprint_clearing_enabled: true
         observation_sources: "lidar"
         lidar:
           topic: /scan
@@ -141,6 +145,7 @@ global_costmap:
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
+        footprint_clearing_enabled: true
         observation_sources: "lidar"
         lidar:
           topic: /scan

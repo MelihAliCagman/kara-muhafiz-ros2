@@ -67,7 +67,16 @@ LIDAR_SNIPPET = """
             <max_angle>3.14159265</max_angle>
           </horizontal>
         </scan>
-        <range><min>0.12</min><max>12.0</max><resolution>0.01</resolution></range>
+        <!-- HATA DUZELTMESI (Hafta 3 canli test, 2026-10-24): min 0.12 -> 0.35.
+             LiDAR, taret/namlu gibi aracin kendi parcalarini ~0.2m mesafede
+             "engel" olarak goruyordu (Gun 6-7'de fark edilmisti); bu yanlis
+             okumalar global costmap'te aracin KENDI baslangic hucresini
+             tikali isaretleyip Nav2 planlayicisini kilitliyordu ("Failed to
+             create a plan ... This shouldn't happen"). 0.35m altindaki
+             okumalar artik sensorun kendisi tarafindan menzil-disi sayilip
+             eleniyor - gercek yakin-mesafe engelleri icin sonarlar (0.02m'den
+             itibaren) zaten yedek sagliyor, guvenlik kaybi yok. -->
+        <range><min>0.35</min><max>12.0</max><resolution>0.01</resolution></range>
       </ray>
       <plugin name="lidar_plugin" filename="libgazebo_ros_ray_sensor.so">
         <ros>
