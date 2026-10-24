@@ -1,0 +1,35 @@
+# Son-care guvenlik katmani: Nav2'nin planlama/kontrol mantigindan BAGIMSIZ,
+# dogrudan ham LiDAR verisiyle calisir. Aracin onundeki dikdortgen bolgede
+# (StopZone) herhangi bir nokta varsa, komut ne olursa olsun hizi SIFIRLAR -
+# controller/planner bir hata yapsa (ornegin yanlis costmap guncellemesi)
+# bile bu katman bagimsiz olarak devreye girer.
+collision_monitor:
+  ros__parameters:
+    use_sim_time: true
+    base_frame_id: "base_footprint"
+    odom_frame_id: "odom"
+    cmd_vel_in_topic: "cmd_vel_nav2_unchecked"
+    cmd_vel_out_topic: "cmd_vel_nav2"
+    state_topic: "collision_monitor_state"
+    transform_tolerance: 0.2
+    source_timeout: 1.0
+    base_shift_correction: true
+    stop_pub_timeout: 2.0
+
+    polygons: ["StopZone"]
+    StopZone:
+      type: "polygon"
+      # Arac govdesinden biraz genis bir dikdortgen (gorev sartnamesi:
+      # "tum hareket komutlari bir guvenlik kontrolunden gecmeli").
+      # NOT: canli configure testinde yakalandi - points bir STRING degil,
+      # cift hassasiyetli sayi DIZISI (double_array) olmali.
+      points: [1.0, 0.6, 1.0, -0.6, -1.0, -0.6, -1.0, 0.6]
+      action_type: "stop"
+      min_points: 2
+      visualize: true
+      polygon_pub_topic: "stop_zone"
+
+    observation_sources: ["scan"]
+    scan:
+      type: "scan"
+      topic: "scan"

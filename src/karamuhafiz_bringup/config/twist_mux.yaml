@@ -1,0 +1,28 @@
+# Manuel/otonom mod guvenli gecisi. twist_mux, birden fazla /cmd_vel
+# kaynagini ONCELIK sirasina gore tek bir cikisa birlestirir - operator her
+# zaman otonomiyi "ezip gecebilir" (manuel oncelik > otonom oncelik).
+#
+# NOT: ros-humble-twist-mux paketi bu oturumda KURULU DEGIL (sudo sifresi
+# gerektirdigi icin kurulamadi) - bu dosya YAZILDI ama Gazebo'suz standalone
+# testle bile DOGRULANAMADI (digerlerinin aksine). Kullanim oncesi:
+#   sudo apt install ros-humble-twist-mux
+twist_mux:
+  ros__parameters:
+    topics:
+      manual:
+        topic: cmd_vel_manual
+        timeout: 0.5
+        priority: 100
+      navigation:
+        topic: cmd_vel_nav2
+        timeout: 0.5
+        priority: 10
+    locks:
+      # /emergency_stop True oldugunda twist_mux TUM ciktiyi keser - manuel
+      # VEYA otonom, hangi kaynaktan gelirse gelsin. manual_drive_node'daki
+      # e-stop mantigiyla AYNI topic, iki bagimsiz guvenlik katmani olarak
+      # calisir (savunma derinligi).
+      emergency_stop:
+        topic: emergency_stop
+        timeout: 0.0
+        priority: 255

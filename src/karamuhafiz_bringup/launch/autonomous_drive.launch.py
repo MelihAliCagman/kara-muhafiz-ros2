@@ -4,14 +4,26 @@
 localization.launch.py'yi (ki o da sim + manuel surus altyapisini) dahil
 eder, uzerine Nav2 yigini ve waypoint_mission_node'u ekler.
 
-Teknik kisit (sartname): "Otonom gorev sirasinda klavye, joystick veya
-manuel komut kullanilamaz." Bu launch dosyasi global_keyboard_teleop_node'u
-BASLATMAZ - yalnizca Nav2'nin kendi uretecegi komutlar
-/ackermann_steering_controller/reference_unstamped'e ulasir (manual_drive_node
-devre disi birakilmadiysa onunla CAKISABILIR - bkz. Hafta 3 Gun 3 raporu,
-twist_mux ile cozulecek).
+Manuel/otonom guvenli gecis: twist_mux, iki /cmd_vel kaynagini (manuel
+oncelikli, otonom dusuk oncelikli) TEK bir /cmd_vel'e birlestirir;
+manual_drive_node (localization.launch.py -> manual_drive.launch.py icinde
+zaten calisiyor) bu BIRLESTIRILMIS komutu alip her zamanki guvenlik
+(clamp + watchdog + e-stop) katmanindan gecirir - yani manuel VE otonom
+komutlar AYNI tek guvenlik kapisindan geciyor, iki ayri guvenlik mantigi
+YOK. Operator, bu launch calisirken AYRI bir terminalde:
 
-NOT: Bu dosya simulasyonda CANLI TEST EDILMEDI (bkz. Hafta 3 raporlari).
+    ros2 run karamuhafiz_control global_keyboard_teleop_node \\
+        --ros-args -p cmd_vel_topic:=/cmd_vel_manual
+
+calistirirsa, her an otonomiyi EZIP GECEBILIR (manuel oncelik=100 >
+otonom oncelik=10). Hicbir manuel teleop calismiyorsa twist_mux otomatik
+olarak otonom kaynaga (/cmd_vel_nav2) gecer.
+
+NOT: twist_mux paketi bu oturumda KURULU DEGIL (sudo sifresi gerektirdigi
+icin kurulamadi) - kod YAZILDI ama DOGRULANAMADI. Once:
+    sudo apt install ros-humble-twist-mux
+Diger tum dosyalar (Nav2 yigini) Gazebo'suz standalone "configure" testiyle
+dogrulandi (bkz. Hafta 3 Gun 1 raporu).
 """
 import os
 
@@ -70,8 +82,15 @@ def generate_launch_description():
             parameters=[nav2_params],
             remappings=[
                 ("cmd_vel", "cmd_vel_nav2_raw"),
-                ("cmd_vel_smoothed", "/ackermann_steering_controller/reference_unstamped"),
+                # collision_monitor'dan GECECEK (dogrudan twist_mux'a degil) -
+                # son-care yakin-mesafe kontrolu icin.
+                ("cmd_vel_smoothed", "/cmd_vel_nav2_unchecked"),
             ],
+        ),
+        Node(
+            package="nav2_collision_monitor", executable="collision_monitor",
+            name="collision_monitor", output="screen",
+            parameters=[os.path.join(bringup_share, "config", "collision_monitor.yaml")],
         ),
         Node(
             package="nav2_lifecycle_manager", executable="lifecycle_manager",
@@ -81,6 +100,7 @@ def generate_launch_description():
                 {"node_names": [
                     "controller_server", "planner_server", "behavior_server",
                     "bt_navigator", "waypoint_follower", "velocity_smoother",
+                    "collision_monitor",
                 ]},
             ],
         ),
@@ -93,8 +113,20 @@ def generate_launch_description():
         parameters=[mission_yaml],
     )
 
+    twist_mux_yaml = os.path.join(bringup_share, "config", "twist_mux.yaml")
+    twist_mux_node = Node(
+        package="twist_mux",
+        executable="twist_mux",
+        output="screen",
+        parameters=[twist_mux_yaml, {"use_sim_time": True}],
+        # Birlestirilmis cikis, manual_drive_node'un zaten dinledigi
+        # varsayilan /cmd_vel ismine gidiyor - manual_drive_node degismedi.
+        remappings=[("cmd_vel_out", "/cmd_vel")],
+    )
+
     return LaunchDescription([
         localization,
         *nav2_nodes,
         waypoint_mission_node,
+        twist_mux_node,
     ])
